@@ -1,7 +1,6 @@
 // ============================================================
-// ThinkUplift V1 — single-file build, v3.2 (bulletproof stories)
-// Story sources, in order: GitHub (live) -> phone cache -> bundled
-// asset -> content embedded in this file. The app can never be empty.
+// ThinkUplift V1 — single-file build, v3.3
+// (new: ThinkUplift wordmark on the Home screen header)
 // ============================================================
 import 'dart:convert';
 import 'dart:io';
@@ -1309,6 +1308,21 @@ class GreetingHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text.rich(
+                  TextSpan(
+                    style: theme.textTheme.titleLarge,
+                    children: [
+                      const TextSpan(text: "Think"),
+                      TextSpan(
+                        text: "Uplift",
+                        style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Text(_greeting, style: theme.textTheme.displaySmall),
                 const SizedBox(height: 6),
                 Text("What will you learn today?",
