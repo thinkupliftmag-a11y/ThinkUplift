@@ -18,6 +18,9 @@ jobs:
       - name: Generate Android platform folder
         run: flutter create . --platforms=android --project-name thinkuplift
 
+      - name: Allow internet access (fonts + live story updates)
+        run: sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+
       - name: Get dependencies
         run: flutter pub get
 
