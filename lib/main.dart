@@ -1,7 +1,6 @@
 // ============================================================
-// ThinkUplift V1 — single-file build (for easy phone upload)
-// Same code as the full clean-architecture project, concatenated.
-// Full modular version: thinkuplift-v1.zip
+// ThinkUplift V1 — single-file build, v2
+// (native share plugin removed; Share button now copies to clipboard)
 // ============================================================
 import 'dart:convert';
 
@@ -11,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:share_plus/share_plus.dart';
 
 
 // ═══════════ domain/entities/story.dart ═══════════
@@ -2290,8 +2288,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               IconButton(
                 tooltip: 'Share',
                 icon: const Icon(Icons.ios_share_rounded, size: 20),
-                onPressed: () => Share.share(
-                    '"${story.title}" — a story worth sitting with, on ThinkUplift.\n\n${story.lifeLesson}'),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(
+                      text:
+                          '"${story.title}" — a story worth sitting with, on ThinkUplift.\n\n${story.lifeLesson}'));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text(
+                            'Story copied — paste it anywhere to share.')));
+                  }
+                },
               ),
               const SizedBox(width: 4),
             ],
