@@ -1,8 +1,10 @@
 // ============================================================
-// ThinkUplift V1 — single-file build, v2
-// (native share plugin removed; Share button now copies to clipboard)
+// ThinkUplift V1 — single-file build, v3
+// Stories now load live from assets/stories.json in this GitHub repo:
+// edit that one file to publish content — no rebuild needed.
 // ============================================================
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,23 +58,43 @@ class Story {
 
   /// Firebase-ready serialization. When a remote StoryRepository is added,
   /// Firestore documents map 1:1 to this entity — the UI layer never changes.
-  factory Story.fromMap(Map<String, dynamic> map) => Story(
-        id: map["id"] as String,
-        title: map["title"] as String,
-        subtitle: map["subtitle"] as String,
-        category: map["category"] as String,
-        readingMinutes: map["readingMinutes"] as int,
-        body: map["body"] as String,
-        lifeLesson: map["lifeLesson"] as String,
-        reflectionQuestions:
-            List<String>.from(map["reflectionQuestions"] as List),
-        recommendedBooks: (map["recommendedBooks"] as List)
-            .map((b) => RecommendedBook.fromMap(Map<String, dynamic>.from(b)))
-            .toList(),
-        coverColors: List<int>.from(map["coverColors"] as List),
-        isTodaysStory: map["isTodaysStory"] as bool? ?? false,
-        isFeatured: map["isFeatured"] as bool? ?? false,
-      );
+  /// Tolerant parser so non-programmers can write stories in JSON:
+  /// coverColors accept '#RRGGBB' strings, body may be a list of
+  /// paragraphs, and most fields have sensible defaults.
+  factory Story.fromMap(Map<String, dynamic> map) {
+    final title = map['title'] as String;
+    final body = map['body'] is List
+        ? (map['body'] as List).map((e) => e.toString().trim()).join('\n\n')
+        : (map['body'] as String);
+    final words = body.split(RegExp(r'\s+')).length;
+    return Story(
+      id: (map['id'] as String?) ??
+          title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\u0900-\u097F]+'), '-'),
+      title: title,
+      subtitle: map['subtitle'] as String? ?? '',
+      category: map['category'] as String? ?? 'Life',
+      readingMinutes:
+          (map['readingMinutes'] as num?)?.toInt() ?? (words / 170).ceil().clamp(1, 60),
+      body: body,
+      lifeLesson: map['lifeLesson'] as String? ?? '',
+      reflectionQuestions:
+          List<String>.from(map['reflectionQuestions'] as List? ?? const []),
+      recommendedBooks: (map['recommendedBooks'] as List? ?? const [])
+          .map((b) => RecommendedBook.fromMap(Map<String, dynamic>.from(b)))
+          .toList(),
+      coverColors: (map['coverColors'] as List? ?? const [0xFF3D5A80, 0xFF98C1D9])
+          .map(_parseColor)
+          .toList(),
+      isTodaysStory: map['isTodaysStory'] as bool? ?? false,
+      isFeatured: map['isFeatured'] as bool? ?? false,
+    );
+  }
+
+  static int _parseColor(dynamic v) {
+    if (v is int) return v;
+    final hex = v.toString().replaceFirst('#', '');
+    return 0xFF000000 | int.parse(hex, radix: 16);
+  }
 
   Map<String, dynamic> toMap() => {
         "id": id,
@@ -209,280 +231,8 @@ abstract class ProgressRepository {
 
 // ═══════════ data/demo/demo_stories.dart ═══════════
 
-/// The five launch stories, bundled with the app.
-/// Each follows the ThinkUplift writing structure:
-/// hook → real human story → emotional turning point → lesson → action.
-///
-/// When the Firebase content pipeline arrives, this file is simply retired
-/// and a FirebaseStoryRepository serves the same [Story] entity.
-const demoStories = <Story>[
-  Story(
-    id: 'give-no-excuse-ever',
-    title: 'Give No Excuse Ever',
-    subtitle: 'The day I ran out of people to blame',
-    category: 'Mindset',
-    readingMinutes: 4,
-    isTodaysStory: true,
-    isFeatured: true,
-    coverColors: [0xFF3D5A80, 0xFF98C1D9],
-    body: '''
-For three years, I kept a list of reasons my life wasn't working.
-
-It was a good list. Honest, even. My father left when I was nine. My first boss took credit for my work. The city I grew up in had no opportunities. My college fund disappeared in a family dispute I was too young to understand.
-
-Every item on that list was true. That was the problem.
-
-## The list
-
-I didn't write the list on paper. I carried it in my chest, and I recited it — to friends over tea, to my mother on Sunday calls, to strangers who asked why I hadn't finished my degree. People nodded. People sympathized. Sympathy feels almost like progress, if you don't look at it too closely.
-
-Then one evening my cousin Ravi visited. Ravi drives a delivery van. He lost his right hand in a factory accident at twenty-two, learned to write with his left, and passed his accounting exams at thirty-one while working full shifts.
-
-I recited my list. He listened all the way through, which nobody had done before. Then he asked one question:
-
-"Okay. And what is your plan?"
-
-I started the list again. He stopped me gently. "No — that is what happened to you. I asked what your plan is."
-
-## The turning point
-
-I had no plan. I had never had a plan. I had a defense.
-
-That night I understood something that embarrassed me for weeks: I had been preparing for a trial that was never going to happen. There is no courtroom where you present your excuses and receive your lost years back. The list was accurate, and it was useless. Both things were true at once.
-
-An excuse is a story about the past that asks nothing of you. A plan is a story about the future that asks everything.
-
-## What changed
-
-I did not become a different person overnight. I did one small thing: every time I caught myself reciting the list, I made myself finish the sentence with "...and here is what I will do about it this week."
-
-Half the time, the second half of the sentence was tiny. Email one person. Read one chapter. Save one small amount. It didn't matter. The sentence had a new shape now, and the shape did the work.
-
-Two years later I finished my degree at night school. The list still exists — everything on it still happened. I just stopped presenting it as evidence and started treating it as terrain.
-''',
-    lifeLesson:
-        'Your excuses can be completely valid and completely useless at the same time. The question is never whether your reasons are real — it is what your plan is.',
-    reflectionQuestions: [
-      'What is one true excuse you have been carrying as a defense?',
-      'If you finished it with "...and here is what I will do this week," what would the sentence say?',
-    ],
-    recommendedBooks: [
-      RecommendedBook(title: 'Man\'s Search for Meaning', author: 'Viktor E. Frankl'),
-      RecommendedBook(title: 'Extreme Ownership', author: 'Jocko Willink & Leif Babin'),
-    ],
-  ),
-  Story(
-    id: '143-days-in-jail',
-    title: '143 Days in Jail',
-    subtitle: 'What a locked door taught me about open ones',
-    category: 'Rebuilding',
-    readingMinutes: 5,
-    isFeatured: true,
-    coverColors: [0xFF33415C, 0xFF7D8CA3],
-    body: '''
-The worst part was not the door locking. It was hearing my own name read out loud in a room where nobody knew me, and realizing that to everyone present, the name and the charge were the same thing.
-
-I was twenty-six. A business partner had forged documents; my signature sat next to his. It took 143 days for the truth to be sorted out. This is not a story about injustice, though. Plenty of men in that ward had done exactly what they were accused of, and one of them changed my life.
-
-## The teacher
-
-His name was Dawood. He was fifty-one and had been inside for six years. Every morning at five, before the noise started, he sat cross-legged on his mat with a book. Always a book. The prison library was two metal shelves, and he had read both of them, some titles four times.
-
-For my first month, I did what most new men did: I replayed the past on a loop. The meeting where I should have read the papers. The friend I should not have trusted. I wore a groove in those memories like a path worn in grass.
-
-Dawood watched me pace for a few weeks. Then one morning he held out a book — a worn biography of Abraham Lincoln — and said the sentence I have repeated to myself for eleven years since:
-
-"Your body is in here for some months. Your mind does not have to serve the same sentence."
-
-## The turning point
-
-I read the Lincoln book in three days. Then a book on soil farming. Then a psychology textbook missing its cover. I was not reading for pleasure. I was reading the way a drowning man breathes.
-
-Something strange happened around day sixty. The walls did not move, but they mattered less. I started keeping a notebook — lessons from each book, one page each. By day 143, the notebook had ninety-one pages.
-
-The day I walked out, Dawood shook my hand and said, "Most men leave here angrier. Try to be the other kind."
-
-## After
-
-The case was dismissed. My old life was not waiting for me — the business was gone, some friends were gone. But the notebook came with me, and so did the habit. Five a.m. A book. A page of notes.
-
-I rebuilt slowly: a small job, then a better one, then my own work again — this time reading every paper twice. The 143 days took things from me I will not get back. They also gave me the one habit that rebuilt everything else.
-
-I did not choose the room. I chose what I did in it.
-''',
-    lifeLesson:
-        'You cannot always choose your circumstances, but your mind never has to serve the same sentence as your situation. A daily habit of learning can survive any room.',
-    reflectionQuestions: [
-      'What "room" are you in right now that you did not choose?',
-      'What is one habit that could keep your mind free inside it?',
-    ],
-    recommendedBooks: [
-      RecommendedBook(title: 'The Obstacle Is the Way', author: 'Ryan Holiday'),
-      RecommendedBook(title: 'Long Walk to Freedom', author: 'Nelson Mandela'),
-    ],
-  ),
-  Story(
-    id: 'the-brother-who-left-me',
-    title: 'The Brother Who Left Me',
-    subtitle: 'On loving people who choose to walk away',
-    category: 'Family',
-    readingMinutes: 4,
-    coverColors: [0xFF6D597A, 0xFFB56576],
-    body: '''
-My brother Sameer stopped speaking to me on a Tuesday in March, and for four years I did not know why.
-
-We had shared a room for sixteen years. He taught me to ride a bicycle by lying about how long he would hold the seat. When our father was in the hospital, we took turns sleeping in the corridor chair. I would have told you we were unbreakable, and I would have been sincere, and I would have been wrong.
-
-## The silence
-
-There was no dramatic fight. There was a property matter after our father passed — small, resolvable, the kind of thing families argue about at dinner and forget by dessert. Except we didn't. Words were said through relatives, which is the worst way words can travel, because relatives deliver the sentence but never the tone.
-
-Then: silence. My calls went unanswered. My messages showed as read. At his daughter's wedding, I was not invited, and I learned about it from a photograph.
-
-For two of those four years, I was consumed. I drafted long messages at midnight and deleted them at dawn. I argued with him constantly — in the shower, in traffic — winning debates he was not present for. The person occupying the most space in my head was a person who had removed me from his life entirely.
-
-## The turning point
-
-The shift came from my aunt, who is eighty-two and has buried two husbands and one child, and therefore does not waste words. I was recounting the whole history to her again when she interrupted:
-
-"You keep knocking on a door and calling it love. Sometimes love is letting the door be a door."
-
-She was not telling me to stop loving him. She was telling me to stop living at his doorstep.
-
-## What I did
-
-I wrote Sameer one final letter — not a case, not a defense, just three things: what he had meant to me, that my door would remain open without conditions, and that I would stop knocking on his. I mailed it, and then I did the hardest thing: I went back to my own life and actually lived it.
-
-I will not pretend this story has the ending you might want. He has not called. Perhaps he never will.
-
-But something unexpected returned to me: my mornings. My attention. The energy I had spent on an argument with a ghost went back into my children, my work, my own days. I still love my brother. I have simply stopped auditioning for a role in his life, and started fully playing the one in mine.
-
-Some doors you keep open. You just stop standing in them.
-''',
-    lifeLesson:
-        'You can love someone completely and still stop organizing your life around their absence. Leave the door open — then step away from it and live.',
-    reflectionQuestions: [
-      'Is there a relationship where you are "standing in the doorway" instead of living your life?',
-      'What would it look like to leave the door open, but step away from it?',
-    ],
-    recommendedBooks: [
-      RecommendedBook(title: 'The Four Agreements', author: 'Don Miguel Ruiz'),
-      RecommendedBook(title: 'Necessary Losses', author: 'Judith Viorst'),
-    ],
-  ),
-  Story(
-    id: 'books-saved-my-life',
-    title: 'Books Saved My Life',
-    subtitle: 'A library card, a night shift, and a way out',
-    category: 'Books',
-    readingMinutes: 4,
-    isFeatured: true,
-    coverColors: [0xFF386641, 0xFFA7C957],
-    body: '''
-At nineteen, my entire world was a security guard's chair, a gate, and eleven hours of night.
-
-I had failed my exams — not narrowly, completely. My family needed income, so I took the only job available: night watchman at a textile warehouse on the edge of town. My friends went to college. I went to a plastic chair under a tube light, six nights a week.
-
-The first months, I did what the darkness invites you to do: I sat with my phone until it died around 2 a.m., and then I sat with my thoughts, which were worse.
-
-## The box
-
-The warehouse owner's father had passed away that year, and one night a truck delivered boxes of his belongings for storage. One box had split open. Books had spilled across the loading dock — I was told to repack them.
-
-I picked up the first one to put it away and read the opening line standing up. I read the first chapter leaning against the shelf. I finished the book at 4 a.m. in my plastic chair, and for the first time in months, the night had gone somewhere.
-
-The owner noticed the repacked box was often lighter by one book. Instead of firing me, he said, "Read them in order, at least. My father would have liked that."
-
-## The turning point
-
-There were over two hundred books in those boxes. History, biographies, old novels, a chemistry textbook, a book on public speaking with notes in the margins in a dead man's careful handwriting.
-
-I made a rule: one book per week, one notebook page per book. Eleven hours of night is a curse if you are waiting for morning. It is a gift if you are reading. The same hours, the same chair — a different man sitting in it.
-
-The chemistry textbook made me curious enough to retake my exams. The public speaking book made me bold enough to ask questions in class when I finally got there. Three years of nights gave me something my college classmates did not have: I had read two hundred books, and I knew exactly why I was there.
-
-## Now
-
-I teach at a small school today. On the first day of every year, I tell my students about the box on the loading dock, and I give each of them a library card application.
-
-Not everyone gets a rescue. But almost everyone, at some point, gets a book. The difference is whether you pick it up.
-''',
-    lifeLesson:
-        'The same empty hours can be a sentence or a scholarship. A book turns waiting time into building time — and almost everyone can reach one.',
-    reflectionQuestions: [
-      'Where in your week are "empty hours" you have been merely enduring?',
-      'What is one book you could place inside those hours this week?',
-    ],
-    recommendedBooks: [
-      RecommendedBook(title: 'Educated', author: 'Tara Westover'),
-      RecommendedBook(title: 'The Autobiography of Malcolm X', author: 'Malcolm X & Alex Haley'),
-    ],
-  ),
-  Story(
-    id: 'rebuild-yourself',
-    title: 'Rebuild Yourself',
-    subtitle: 'What a demolished house taught me about starting over',
-    category: 'Rebuilding',
-    readingMinutes: 5,
-    coverColors: [0xFF5F0F40, 0xFF9A8C98],
-    body: '''
-The year I turned forty, I lost my job, my marriage, and my father — in that order, in eleven months. People called it "a difficult year" in the same tone they would describe bad weather. From the inside, it did not feel like weather. It felt like demolition.
-
-## The house
-
-That winter, I moved back to my parents' town to settle my father's affairs. Next to his house stood a property everyone called the Sharma house — half-collapsed after a fire years earlier, black-streaked, roof open to the sky. It matched my mood so precisely that I avoided looking at it.
-
-One morning I noticed an old man working alone in its rubble. Not clearing it — sorting it. Brick by brick, into piles: broken beyond use, damaged but usable, fully intact. He was there every morning. It took me two weeks to walk over and ask what he was doing.
-
-"Rebuilding," he said, as if it were obvious.
-
-"Why sort the old bricks? Why not just buy new ones?"
-
-He straightened up and gave me a look I still think about. "Because most of the house is still good. People see a ruin and think everything must go. That is lazy looking. The fire took the roof and one wall. It did not take the foundation."
-
-## The turning point
-
-I went home and, feeling somewhat foolish, did what he was doing — on paper. Three columns. Everything in my life, sorted honestly:
-
-Broken beyond use. Damaged but usable. Fully intact.
-
-The first column was shorter than I expected. The marriage was there. The old job was there. The third column stunned me: my health. My skills — twenty years of them. Two friends who had called every single week of that terrible year. My mind, tired but working.
-
-I had been describing myself as a ruin. The honest inventory said: a house with fire damage and a standing foundation. Those are different buildings. They require different plans.
-
-## The rebuild
-
-The old man took two years on the Sharma house. He worked in an order I later realized was deliberate: foundation first, then walls, then roof, then — only at the very end — paint.
-
-I rebuilt in the same order. Foundation first: sleep, walking, meals at regular hours. Then walls: work, using the skills that had survived. The roof — new relationships, new place — came later. The paint, the parts of life that merely look good, came last of all.
-
-He moved into that house. I visited him there before I left town. Same foundation, same good bricks, new roof.
-
-"Everyone rebuilds someday," he told me at the door. "The only mistake is throwing away the good bricks."
-''',
-    lifeLesson:
-        'After a collapse, take an honest inventory before you declare yourself a ruin. Most of your foundation usually survives. Rebuild in order: foundation, walls, roof — paint last.',
-    reflectionQuestions: [
-      'If you sorted your life into three piles today — broken, damaged but usable, intact — what would be in the "intact" pile?',
-      'What is one "foundation" habit you could restore this week, before worrying about the paint?',
-    ],
-    recommendedBooks: [
-      RecommendedBook(title: 'Option B', author: 'Sheryl Sandberg & Adam Grant'),
-      RecommendedBook(title: 'Atomic Habits', author: 'James Clear'),
-    ],
-  ),
-];
-
-/// V1 category list. Kept alongside content so a remote repository
-/// can later derive categories from data instead.
-const demoCategories = <String>[
-  'Rebuilding',
-  'Mindset',
-  'Books',
-  'Purpose',
-  'Family',
-  'Learning',
-];
+// Demo stories have been retired. All content now lives in
+// assets/stories.json, editable on GitHub without rebuilding the app.
 
 // ═══════════ data/local/local_store.dart ═══════════
 
@@ -555,6 +305,10 @@ class LocalStore {
   String getThemeMode() => _prefs.getString(_kThemeMode) ?? "system";
   Future<void> setThemeMode(String mode) => _prefs.setString(_kThemeMode, mode);
 
+  String? getCachedStoriesJson() => _prefs.getString(_kStoriesCache);
+  Future<void> setCachedStoriesJson(String json) =>
+      _prefs.setString(_kStoriesCache, json);
+
   double getFontScale() => _prefs.getDouble(_kFontScale) ?? 1.0;
   Future<void> setFontScale(double scale) =>
       _prefs.setDouble(_kFontScale, scale);
@@ -562,22 +316,92 @@ class LocalStore {
 
 // ═══════════ data/repositories/local_story_repository.dart ═══════════
 
-/// V1 implementation: serves the bundled demo stories.
-/// Replace with FirebaseStoryRepository later by changing one provider.
-class LocalStoryRepository implements StoryRepository {
+/// Stories live in assets/stories.json — one file the writer edits on
+/// GitHub. On launch the app fetches the latest version of that file from
+/// the repo, so new and edited stories appear WITHOUT rebuilding the APK.
+///
+/// Load order: remote file -> last successful copy (offline) -> bundled copy.
+/// A broken edit (invalid JSON) never crashes the app; it silently falls
+/// back to the previous good version.
+class JsonStoryRepository implements StoryRepository {
+  JsonStoryRepository(this._store);
+
+  final LocalStore _store;
+
+  static const _remoteUrl =
+      "https://raw.githubusercontent.com/thinkupliftmag-a11y/ThinkUplift/main/assets/stories.json";
+
+  List<Story>? _stories;
+  List<String>? _categories;
+
+  Future<void> _ensureLoaded() async {
+    if (_stories != null) return;
+
+    final remote = await _fetchRemote();
+    if (remote != null && _tryParse(remote)) {
+      await _store.setCachedStoriesJson(remote);
+      return;
+    }
+    final cached = _store.getCachedStoriesJson();
+    if (cached != null && _tryParse(cached)) return;
+
+    _tryParse(await rootBundle.loadString("assets/stories.json"));
+    _stories ??= const [];
+    _categories ??= const [];
+  }
+
+  bool _tryParse(String raw) {
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final stories = (map["stories"] as List)
+          .map((e) => Story.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+      if (stories.isEmpty) return false;
+      _stories = stories;
+      _categories = List<String>.from(map["categories"] as List? ?? const [])
+          .isNotEmpty
+          ? List<String>.from(map["categories"] as List)
+          : stories.map((s) => s.category).toSet().toList();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<String?> _fetchRemote() async {
+    try {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 6);
+      final request = await client.getUrl(Uri.parse(_remoteUrl));
+      final response =
+          await request.close().timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      return await response.transform(utf8.decoder).join();
+    } catch (_) {
+      return null; // offline or blocked — fall back gracefully
+    }
+  }
+
   @override
-  Future<List<Story>> getAllStories() async => demoStories;
+  Future<List<Story>> getAllStories() async {
+    await _ensureLoaded();
+    return _stories!;
+  }
 
   @override
   Future<Story?> getStoryById(String id) async {
-    for (final s in demoStories) {
+    await _ensureLoaded();
+    for (final s in _stories!) {
       if (s.id == id) return s;
     }
     return null;
   }
 
   @override
-  Future<List<String>> getCategories() async => demoCategories;
+  Future<List<String>> getCategories() async {
+    await _ensureLoaded();
+    return _categories!;
+  }
 }
 
 // ═══════════ data/repositories/local_reflection_repository.dart ═══════════
@@ -680,8 +504,8 @@ final localStoreProvider =
     Provider<LocalStore>((ref) => throw UnimplementedError());
 
 // ---------- Repository seams (swap these to go remote/Firebase) ----------
-final storyRepositoryProvider =
-    Provider<StoryRepository>((ref) => LocalStoryRepository());
+final storyRepositoryProvider = Provider<StoryRepository>(
+    (ref) => JsonStoryRepository(ref.watch(localStoreProvider)));
 
 final reflectionRepositoryProvider = Provider<ReflectionRepository>(
     (ref) => LocalReflectionRepository(ref.watch(localStoreProvider)));
