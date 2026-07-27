@@ -12,7 +12,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.32.0'
           cache: true
 
       - name: Generate Android platform folder
