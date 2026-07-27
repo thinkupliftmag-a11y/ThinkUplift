@@ -1,6 +1,7 @@
 // ============================================================
-// ThinkUplift V1 — single-file build, v3.1
-// (fix: missing _kStoriesCache constant in LocalStore)
+// ThinkUplift V1 — single-file build, v3.2 (bulletproof stories)
+// Story sources, in order: GitHub (live) -> phone cache -> bundled
+// asset -> content embedded in this file. The app can never be empty.
 // ============================================================
 import 'dart:convert';
 import 'dart:io';
@@ -331,6 +332,10 @@ class JsonStoryRepository implements StoryRepository {
   static const _remoteUrl =
       "https://raw.githubusercontent.com/thinkupliftmag-a11y/ThinkUplift/main/assets/stories.json";
 
+  /// Last-resort content compiled into the app itself, so the Home screen
+  /// is never empty even if both the network and the bundled asset fail.
+  static const _embeddedFallback = '''{"categories": ["Rebuilding", "Mindset", "Books", "Purpose", "Family", "Learning"], "stories": [{"title": "Shuruaat Chhoti Thi", "subtitle": "Ek chhota kadam jo sab badal deta hai", "category": "Mindset", "isTodaysStory": true, "coverColors": ["#3D5A80", "#98C1D9"], "body": ["Ye pehli kahani hai — aur ise aap khud badal sakte hain.", "GitHub par assets/stories.json file kholiye, pencil icon dabaiye, aur apni kahani likhiye. App agli baar khulte hi nayi kahani dikha degi. Na koi app update, na koi build.", "## Kahani kaise likhein", "Har paragraph ko quotes ke andar alag line par likhiye, jaise ye wale likhe hain. Jis line ke shuru mein ## ho, wo heading ban jaati hai.", "Kahani Hindi mein likhiye, Hinglish mein, ya English mein — teeno chalengi.", "Ek baat ka dhyan rakhiye: kahani ke andar double quote mat likhiye, uski jagah single quote (') use kariye.", "Baaki sab — lesson, reflection ke sawaal, book suggestions — neeche ke fields mein bhariye. Jo field na bharein, app use chhod degi."], "lifeLesson": "Badi cheezein hamesha chhoti shuruaat se banti hain. Pehla kadam kabhi perfect nahi hota — bas hota hai.", "reflectionQuestions": ["Aaj aap kaunsa chhota kadam utha sakte hain?", "Kaunsi cheez aapko shuru karne se rok rahi hai?"], "recommendedBooks": [{"title": "Atomic Habits", "author": "James Clear"}]}]}''';
+
   List<Story>? _stories;
   List<String>? _categories;
 
@@ -345,7 +350,14 @@ class JsonStoryRepository implements StoryRepository {
     final cached = _store.getCachedStoriesJson();
     if (cached != null && _tryParse(cached)) return;
 
-    _tryParse(await rootBundle.loadString("assets/stories.json"));
+    try {
+      if (_tryParse(await rootBundle.loadString("assets/stories.json"))) {
+        return;
+      }
+    } catch (_) {
+      // asset missing from this build — fall through to embedded copy
+    }
+    _tryParse(_embeddedFallback);
     _stories ??= const [];
     _categories ??= const [];
   }
@@ -1791,6 +1803,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           data: (stories) {
+            if (stories.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'No stories yet. Add your first story to assets/stories.json.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              );
+            }
             final todays =
                 stories.where((s) => s.isTodaysStory).firstOrNull ??
                     stories.first;
