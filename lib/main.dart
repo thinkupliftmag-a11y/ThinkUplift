@@ -1,7 +1,6 @@
 // ============================================================
-// ThinkUplift V1 — single-file build, v3
-// Stories now load live from assets/stories.json in this GitHub repo:
-// edit that one file to publish content — no rebuild needed.
+// ThinkUplift V1 — single-file build, v3.1
+// (fix: missing _kStoriesCache constant in LocalStore)
 // ============================================================
 import 'dart:convert';
 import 'dart:io';
@@ -252,6 +251,7 @@ class LocalStore {
   static const _kReflections = "reflections_json";
   static const _kThemeMode = "theme_mode"; // system | light | dark
   static const _kFontScale = "reader_font_scale";
+  static const _kStoriesCache = "stories_json_cache";
 
   static Future<LocalStore> init() async =>
       LocalStore(await SharedPreferences.getInstance());
