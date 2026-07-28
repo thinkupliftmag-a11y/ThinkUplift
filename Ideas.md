@@ -75,6 +75,7 @@ Har rebuild par phone ka local data (reflections, streak, bookmarks) reset hota 
 isliye changes jama karke ek baar mein karo.
 [ ] App ka icon (abhi default Flutter wala hai)
 [ ] Launcher mein app ka naam "ThinkUplift" dikhe
+Kahani ke ant me sawaal puchna hai usse related fir wo reflection me jaaye
 [ ] Hindi ke liye sundar serif font (abhi English/Hinglish ke liye hi khaas font hai)
 [ ] Pull-to-refresh (Force stop ki zaroorat khatam)
 [ ] (aage jo bhi aaye, yahan likhte jao)
