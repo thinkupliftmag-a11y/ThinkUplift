@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThinkUplift — Story Studio</title>
+<style>
+:root{--paper:#fff;--ink:#1C2430;--muted:#66707E;--accent:#3E5C8F;--soft:#F6F8FB;--line:#E6EAF0;--ok:#2E7D46;--warn:#B3574E}
+*{box-sizing:border-box;margin:0}
+body{font-family:Georgia,'Noto Serif',serif;background:var(--soft);color:var(--ink);line-height:1.6;padding-bottom:60px}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+header{background:var(--paper);border-bottom:1px solid var(--line);padding:18px 16px;margin-bottom:16px}
+header h1{font-size:26px}header h1 i{color:var(--accent);font-style:italic}
+header p{color:var(--muted);font-size:14px;font-family:system-ui,sans-serif}
+.card{background:var(--paper);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px rgba(0,0,0,.05)}
+h2{font-size:19px;margin-bottom:10px}
+label{display:block;font-family:system-ui,sans-serif;font-size:13px;font-weight:600;margin:14px 0 5px;color:var(--ink)}
+label small{font-weight:400;color:var(--muted)}
+input[type=text],textarea,select{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:15px;background:#fff}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:140px}
+.btn{display:inline-block;border:none;border-radius:12px;padding:13px 20px;font-family:system-ui,sans-serif;font-size:15px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sec{background:var(--soft);color:var(--ink);border:1.5px solid var(--line)}
+.btn.small{padding:7px 12px;font-size:13px;border-radius:9px}
+.btn.danger{background:#fff;color:var(--warn);border:1.5px solid var(--warn)}
+.btn.full{width:100%;margin-top:16px}
+.story-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.story-item:last-child{border-bottom:none}
+.dot{width:34px;height:34px;border-radius:9px;flex:none}
+.story-item .t{flex:1;min-width:0}
+.story-item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-item .t span{font-family:system-ui,sans-serif;font-size:12px;color:var(--muted)}
+.badge{font-family:system-ui,sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;background:#E8EEF7;color:var(--accent);border-radius:20px;padding:3px 8px}
+.colors{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.sw{width:52px;height:34px;border-radius:9px;cursor:pointer;border:2.5px solid transparent}
+.sw.sel{border-color:var(--ink)}
+.check{display:flex;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:14px;margin-top:14px}
+.check input{width:19px;height:19px}
+#out{font-family:monospace;font-size:12px;height:190px;background:#0f1420;color:#cfe3ff;border:none}
+.steps{font-family:system-ui,sans-serif;font-size:13.5px;color:var(--muted)}
+.steps b{color:var(--ink)}
+.msg{font-family:system-ui,sans-serif;font-size:13.5px;padding:10px 12px;border-radius:10px;margin-top:10px;display:none}
+.msg.ok{background:#E7F3EB;color:var(--ok);display:block}
+.msg.err{background:#FBEAE8;color:var(--warn);display:block}
+.hide{display:none}
+a.link{color:var(--accent)}
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding:0">
+<h1>Think<i>Uplift</i> — Story Studio</h1>
+<p>Likho form mein · File Banao dabao · Copy karo · GitHub par paste karo — bas.</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="card" id="loadCard">
+  <h2>📚 Aapki kahaniyan</h2>
+  <div id="loadStatus" class="steps">GitHub se kahaniyan load ho rahi hain…</div>
+  <div id="storyList"></div>
+  <div id="manualLoad" class="hide">
+    <label>Load nahi hui? Apni poori stories.json yahan paste karke Load dabao:</label>
+    <textarea id="manualJson" rows="4" placeholder='{"categories": [...], "stories": [...]}'></textarea>
+    <button class="btn sec small" style="margin-top:8px" onclick="manualLoad()">Load</button>
+  </div>
+  <button class="btn sec small" style="margin-top:10px" onclick="startNew()">＋ Nayi kahani likho</button>
+</div>
+
+<div class="card hide" id="formCard">
+  <h2 id="formTitle">✍️ Nayi kahani</h2>
+
+  <label>Title (kahani ka naam) *</label>
+  <input type="text" id="fTitle" placeholder="जैसे: प्रेम ही असली धर्म है">
+
+  <label>Subtitle <small>(ek line ka saar — optional)</small></label>
+  <input type="text" id="fSubtitle" placeholder="जैसे: सबकी भलाई सबके साथ में">
+
+  <div class="row">
+    <div>
+      <label>Category *</label>
+      <select id="fCategory"></select>
+    </div>
+    <div>
+      <label>…ya nayi category <small>(likho to yahi lagegi)</small></label>
+      <input type="text" id="fNewCat" placeholder="जैसे: प्रेम">
+    </div>
+  </div>
+
+  <label>Cover ke rang</label>
+  <div class="colors" id="fColors"></div>
+
+  <label>Kahani *
+  <small>· Naya paragraph = ek khaali line chhodo · Heading = line ki shuruaat mein ## · Kavita ki lines saath-saath likho (khaali line sirf stanza ke beech) · Double quote " likhne ki chinta mat karo — main sambhal lunga</small></label>
+  <textarea id="fBody" rows="12" placeholder="Pehla paragraph yahan…
+
+Doosra paragraph yahan…
+
+## Beech Ka Heading
+
+Heading ke baad ka paragraph…"></textarea>
+
+  <label>Lesson <small>(kahani ki seekh — optional)</small></label>
+  <textarea id="fLesson" rows="2"></textarea>
+
+  <label>Reflection ke sawaal <small>(har sawaal nayi line par — optional)</small></label>
+  <textarea id="fQuestions" rows="3" placeholder="Pehla sawaal?
+Doosra sawaal?"></textarea>
+
+  <label>Book suggestions <small>(har line par: Kitab ka naam | Lekhak — optional)</small></label>
+  <textarea id="fBooks" rows="2" placeholder="Atomic Habits | James Clear"></textarea>
+
+  <div class="check"><input type="checkbox" id="fToday"><span>Ise <b>Today's Story</b> banao (Home ka bada card)</span></div>
+  <div class="check"><input type="checkbox" id="fFeatured"><span>Featured mein dikhao</span></div>
+
+  <button class="btn full" onclick="saveStory()">✅ Kahani save karo (list mein)</button>
+  <button class="btn sec full" onclick="cancelForm()">Wapas</button>
+  <div id="formMsg" class="msg"></div>
+</div>
+
+<div class="card">
+  <h2>📦 Step 2 — File banao aur GitHub par daalo</h2>
+  <button class="btn full" style="margin-top:4px" onclick="generate()">🛠️ File Banao (stories.json)</button>
+  <div id="genArea" class="hide">
+    <label>Taiyar file — poori copy karo:</label>
+    <textarea id="out" readonly></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="copyOut()">📋 Copy</button>
+      <a class="btn sec" style="text-align:center;text-decoration:none" target="_blank"
+         href="https://github.com/thinkupliftmag-a11y/ThinkUplift/edit/main/assets/stories.json">🌐 GitHub kholo (paste yahan)</a>
+    </div>
+    <p class="steps" style="margin-top:12px">
+      <b>1.</b> Copy dabao → <b>2.</b> GitHub kholo → purana sab select karke delete → paste → <b>3.</b> Commit changes →
+      <b>4.</b> Phone: Settings → Apps → ThinkUplift → <b>Force stop</b> → app kholo ✨
+    </p>
+  </div>
+  <div id="genMsg" class="msg"></div>
+</div>
+
+</div>
+
+<script>
+const RAW='https://raw.githubusercontent.com/thinkupliftmag-a11y/ThinkUplift/main/assets/stories.json';
+const PRESETS=[['#3D5A80','#98C1D9'],['#386641','#A7C957'],['#6D597A','#B56576'],['#5F0F40','#9A8C98'],['#33415C','#7D8CA3'],['#B08968','#DDB892']];
+let data={categories:[],stories:[]};
+let editIndex=-1, selColors=PRESETS[0];
+
+async function load(){
+  try{
+    const r=await fetch(RAW+'?t='+Date.now());
+    if(!r.ok) throw 0;
+    data=await r.json();
+    document.getElementById('loadStatus').innerHTML='✅ <b>'+data.stories.length+'</b> kahaniyan load ho gayin (GitHub se, live).';
+    render();
+  }catch(e){
+    document.getElementById('loadStatus').innerHTML='⚠️ GitHub se load nahi hui (internet check karo).';
+    document.getElementById('manualLoad').classList.remove('hide');
+  }
+}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function render(){
+  const el=document.getElementById('storyList');
+  el.innerHTML=data.stories.map((s,i)=>`
+    <div class="story-item">
+      <div class="dot" style="background:linear-gradient(135deg,${cc(s,0)},${cc(s,1)})"></div>
+      <div class="t"><b>${esc(s.title)}</b><span>${esc(s.category||'')}</span></div>
+      ${s.isTodaysStory?'<span class="badge">TODAY</span>':''}
+      <button class="btn sec small" onclick="editStory(${i})">Edit</button>
+      <button class="btn danger small" onclick="delStory(${i})">✕</button>
+    </div>`).join('') || '<p class="steps">Abhi koi kahani nahi.</p>';
+  const sel=document.getElementById('fCategory');
+  sel.innerHTML=(data.categories||[]).map(c=>`<option>${esc(c)}</option>`).join('');
+}
+function cc(s,i){const c=(s.coverColors||['#3D5A80','#98C1D9'])[i];return typeof c==='number'?'#'+(c&0xFFFFFF).toString(16).padStart(6,'0'):c}
+function manualLoad(){
+  try{data=JSON.parse(document.getElementById('manualJson').value);
+    document.getElementById('loadStatus').innerHTML='✅ Manual load ho gayi.';render();
+  }catch(e){alert('Ye sahi JSON nahi hai — poori file paste karo.')}
+}
+function renderColors(){
+  document.getElementById('fColors').innerHTML=PRESETS.map((p,i)=>
+    `<div class="sw ${p===selColors?'sel':''}" style="background:linear-gradient(135deg,${p[0]},${p[1]})" onclick="pickColor(${i})"></div>`).join('');
+}
+function pickColor(i){selColors=PRESETS[i];renderColors()}
+function startNew(){editIndex=-1;selColors=PRESETS[Math.floor(Math.random()*PRESETS.length)];
+  ['fTitle','fSubtitle','fNewCat','fBody','fLesson','fQuestions','fBooks'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fToday').checked=false;document.getElementById('fFeatured').checked=false;
+  document.getElementById('formTitle').textContent='✍️ Nayi kahani';
+  document.getElementById('formCard').classList.remove('hide');renderColors();
+  document.getElementById('formCard').scrollIntoView({behavior:'smooth'});
+}
+function editStory(i){
+  const s=data.stories[i];editIndex=i;
+  selColors=[cc(s,0),cc(s,1)];
+  document.getElementById('fTitle').value=s.title||'';
+  document.getElementById('fSubtitle').value=s.subtitle||'';
+  document.getElementById('fNewCat').value='';
+  const body=Array.isArray(s.body)?s.body.join('\n\n'):(s.body||'');
+  document.getElementById('fBody').value=body;
+  document.getElementById('fLesson').value=s.lifeLesson||'';
+  document.getElementById('fQuestions').value=(s.reflectionQuestions||[]).join('\n');
+  document.getElementById('fBooks').value=(s.recommendedBooks||[]).map(b=>b.title+' | '+b.author).join('\n');
+  document.getElementById('fToday').checked=!!s.isTodaysStory;
+  document.getElementById('fFeatured').checked=!!s.isFeatured;
+  document.getElementById('formTitle').textContent='✏️ Edit: '+(s.title||'');
+  document.getElementById('formCard').classList.remove('hide');
+  render();renderColors();
+  setTimeout(()=>document.getElementById('fCategory').value=s.category||'',0);
+  document.getElementById('formCard').scrollIntoView({behavior:'smooth'});
+}
+function delStory(i){
+  if(confirm('"'+data.stories[i].title+'" ko list se hatana hai? (GitHub par tabhi hategi jab nayi file paste karoge)')){
+    data.stories.splice(i,1);render();
+  }
+}
+function cancelForm(){document.getElementById('formCard').classList.add('hide')}
+function msg(id,text,cls){const m=document.getElementById(id);m.textContent=text;m.className='msg '+cls;
+  if(cls==='ok')setTimeout(()=>m.className='msg',4000)}
+function saveStory(){
+  const title=document.getElementById('fTitle').value.trim();
+  const bodyRaw=document.getElementById('fBody').value.replace(/\r/g,'').trim();
+  if(!title){msg('formMsg','Title likhna zaroori hai.','err');return}
+  if(!bodyRaw){msg('formMsg','Kahani khaali hai.','err');return}
+  const newCat=document.getElementById('fNewCat').value.trim();
+  const category=newCat||document.getElementById('fCategory').value||'Life';
+  if(newCat&&!data.categories.includes(newCat))data.categories.push(newCat);
+  const story={
+    title:title,
+    subtitle:document.getElementById('fSubtitle').value.trim(),
+    category:category,
+    coverColors:selColors,
+    body:bodyRaw.split(/\n{2,}/).map(p=>p.trim()).filter(Boolean)
+  };
+  const lesson=document.getElementById('fLesson').value.trim();
+  if(lesson)story.lifeLesson=lesson;
+  const qs=document.getElementById('fQuestions').value.split('\n').map(q=>q.trim()).filter(Boolean);
+  if(qs.length)story.reflectionQuestions=qs;
+  const books=document.getElementById('fBooks').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const p=l.split('|');return{title:(p[0]||'').trim(),author:(p[1]||'').trim()}});
+  if(books.length)story.recommendedBooks=books;
+  if(document.getElementById('fFeatured').checked)story.isFeatured=true;
+  if(document.getElementById('fToday').checked){
+    data.stories.forEach(s=>delete s.isTodaysStory);
+    story.isTodaysStory=true;
+  }
+  if(editIndex>=0)data.stories[editIndex]=story;else data.stories.push(story);
+  if(!data.stories.some(s=>s.isTodaysStory)&&data.stories.length)data.stories[0].isTodaysStory=true;
+  render();cancelForm();
+  msg('genMsg','✅ "'+title+'" list mein save ho gayi. Ab "File Banao" dabao.','ok');
+  document.getElementById('genMsg').scrollIntoView({behavior:'smooth'});
+}
+function generate(){
+  if(!data.stories.length){msg('genMsg','Pehle kam se kam ek kahani likho.','err');return}
+  document.getElementById('out').value=JSON.stringify(data,null,2);
+  document.getElementById('genArea').classList.remove('hide');
+  msg('genMsg','File taiyar! Ab Copy dabao.','ok');
+}
+async function copyOut(){
+  const t=document.getElementById('out');
+  try{await navigator.clipboard.writeText(t.value);msg('genMsg','📋 Copy ho gayi! Ab "GitHub kholo" dabao aur paste karo.','ok')}
+  catch(e){t.select();document.execCommand('copy');msg('genMsg','📋 Copy ho gayi!','ok')}
+}
+renderColors();load();
+</script>
+</body>
+</html>
